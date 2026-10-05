@@ -5,7 +5,7 @@
   "description": "Part of Computer Vision Annotation Tool which presents its canvas3D library",
   "main": "src/canvas3d.ts",
   "scripts": {
-    "build": "tsc && webpack --config ./webpack.config.cjs"
+    "build": "node init && tsc && webpack --config ./webpack.config.cjs"
   },
   "author": "CVAT.ai",
   "license": "MIT",

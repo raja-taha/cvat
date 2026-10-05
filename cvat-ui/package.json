@@ -4,8 +4,8 @@
   "description": "CVAT single-page application",
   "main": "src/index.tsx",
   "scripts": {
-    "build": "webpack --config ./webpack.config.js",
-    "start": "webpack serve --env API_URL=http://localhost:7000 --config ./webpack.config.js --mode=development",
+    "build": "node init && webpack --config ./webpack.config.js",
+    "start": "node init && webpack serve --env API_URL=http://localhost:7000 --config ./webpack.config.js --mode=development",
     "lint": "eslint './src/**/*.{ts,tsx}'",
     "lint:fix": "eslint './src/**/*.{ts,tsx}' --fix"
   },

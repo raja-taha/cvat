@@ -5,7 +5,7 @@
   "description": "Part of Computer Vision Tool which presents an interface for client-side integration",
   "main": "src/api.ts",
   "scripts": {
-    "build": "webpack",
+    "build": "node init && webpack",
     "type-check": "tsc --noEmit",
     "type-check:watch": "yarn run type-check --watch"
   },

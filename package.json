@@ -107,12 +107,12 @@
     "precommit:cvat-canvas": "cd cvat-canvas && eslint --fix",
     "precommit:cvat-canvas3d": "cd cvat-canvas3d && eslint --fix",
     "precommit:cvat-ui": "cd cvat-ui && eslint --fix",
-    "build:cvat-ui": "yarn workspace cvat-ui run build",
-    "build:cvat-canvas": "yarn workspace cvat-canvas run build",
-    "build:cvat-canvas3d": "yarn workspace cvat-canvas3d run build",
-    "build:cvat-core": "yarn workspace cvat-core run build",
-    "build:cvat-data": "yarn workspace cvat-data run build",
-    "start:cvat-ui": "yarn workspace cvat-ui run start",
+    "build:cvat-ui": "node init && yarn workspace cvat-ui run build",
+    "build:cvat-canvas": "node init && yarn workspace cvat-canvas run build",
+    "build:cvat-canvas3d": "node init && yarn workspace cvat-canvas3d run build",
+    "build:cvat-core": "node init && yarn workspace cvat-core run build",
+    "build:cvat-data": "node init && yarn workspace cvat-data run build",
+    "start:cvat-ui": "node init && yarn workspace cvat-ui run start",
     "type-check": "yarn run tsc -p cvat-ui/tsconfig.json"
   },
   "repository": {

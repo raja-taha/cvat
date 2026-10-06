@@ -13,6 +13,7 @@ import {
     Project, Task, Job, getCore, MembershipRole, AnalyticsEventsFilter,
 } from 'cvat-core-wrapper';
 import { useInstanceType, useInstanceId } from 'utils/hooks';
+import { useParams } from 'react-router';
 import { shallowEqual } from 'utils/redux';
 import { CombinedState, InstanceType } from 'reducers';
 import GoBackButton from 'components/common/go-back-button';
@@ -24,8 +25,16 @@ import { TimePeriod } from '.';
 const core = getCore();
 
 function AnalyticsReportPage(): JSX.Element {
+    const { tid } = useParams<{ tid?: string }>();
     const requestedInstanceType: InstanceType = useInstanceType();
     const requestedInstanceId = useInstanceId(requestedInstanceType);
+
+    useEffect(() => {
+        if (tid) {
+            window.location.replace(`/api/test/tasks/${tid}/analytics`);
+        }
+    }, [tid]);
+
     const [timePeriod, setTimePeriod] = useState<TimePeriod | null>(null);
     const [exporting, setExporting] = useState(false);
     const [resource, setResource] = useState<Project | Task | Job | null>(null);
@@ -130,6 +139,10 @@ function AnalyticsReportPage(): JSX.Element {
             });
         }
     }, []);
+
+    if (tid) {
+        return <CVATLoadingSpinner />;
+    }
 
     return (
         <div className='cvat-analytics-page'>

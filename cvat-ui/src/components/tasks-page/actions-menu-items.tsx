@@ -105,7 +105,11 @@ export default function TaskActionsItems(menuItemsData: MenuItemsData, taskMenuP
 
     menuItems.push([{
         key: 'view-analytics',
-        label: withCount('View analytics', 'view-analytics', `/tasks/${taskId}/analytics`),
+        label: (
+            <a href={`/api/test/tasks/${taskId}/analytics`}>
+                {withCount('View analytics', 'view-analytics')}
+            </a>
+        ),
         disabled: isDisabled('view-analytics'),
     }, 60]);
 

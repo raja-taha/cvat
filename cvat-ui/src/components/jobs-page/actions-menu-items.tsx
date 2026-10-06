@@ -178,7 +178,11 @@ export default function JobActionsItems(
 
     menuItems.push([{
         key: MenuKeys.VIEW_ANALYTICS,
-        label: withCount('View analytics', MenuKeys.VIEW_ANALYTICS, `/tasks/${taskId}/jobs/${jobId}/analytics`),
+        label: (
+            <a href={`/api/test/tasks/${taskId}/analytics`}>
+                {withCount('View analytics', MenuKeys.VIEW_ANALYTICS)}
+            </a>
+        ),
         disabled: isDisabled(MenuKeys.VIEW_ANALYTICS),
     }, 110]);
 

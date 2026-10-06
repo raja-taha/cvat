@@ -11,11 +11,9 @@ from cvat.apps.test.permissions import AnnotationAnalyticsPermission
 class TaskAnalyticsViewSet(viewsets.GenericViewSet):
     queryset = Task.objects.all()
     iam_permission_class = AnnotationAnalyticsPermission
-    search_fields = []
-    filter_fields = []
-    simple_filters = []
-    ordering_fields = []
-    ordering = "-id"
+    # This is a retrieve-style endpoint. CVAT's global list filters expect
+    # search_fields / lookup_fields and crash get_object without them.
+    filter_backends = []
 
     def _payload(self, task: Task, request) -> dict:
         group_by = request.query_params.get("group_by")

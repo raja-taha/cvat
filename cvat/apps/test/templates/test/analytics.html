@@ -55,6 +55,13 @@
     .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
     .bar { height: 6px; background: #f5f5f5; border-radius: 99px; overflow: hidden; min-width: 64px; }
     .bar > span { display: block; height: 100%; background: var(--primary); }
+    .live {
+      font-size: 12px; padding: 4px 10px; border-radius: 99px; border: 1px solid #d9d9d9;
+      color: var(--muted); white-space: nowrap;
+    }
+    .live.on { color: #389e0d; border-color: #b7eb8f; background: #f6ffed; }
+    .live.wait { color: #d48806; border-color: #ffe58f; background: #fffbe6; }
+    .live.off { color: #cf1322; border-color: #ffccc7; background: #fff2f0; }
   </style>
 </head>
 <body>
@@ -68,6 +75,7 @@
       </div>
     </div>
     <div class="actions">
+      <span class="live wait" id="liveStatus">Live: connecting</span>
       <button type="button" class="primary" id="exportCsv">Export CSV</button>
     </div>
   </div>
@@ -236,9 +244,15 @@
           by_kind: row.by_kind || {},
         }));
         if (!rawClasses.length) {
-          showError("");
           emptyEl.hidden = false;
           emptyEl.textContent = "No annotations on this task yet.";
+          canvas.hidden = true;
+          errorEl.hidden = true;
+          tbody.innerHTML = "";
+          document.getElementById("kpiTotal").textContent = "0";
+          document.getElementById("kpiClasses").textContent = "0";
+          document.getElementById("kpiTop").textContent = "—";
+          document.getElementById("kpiFile").textContent = "0";
           return;
         }
         render();
@@ -295,7 +309,57 @@
       URL.revokeObjectURL(url);
     });
 
+    function setLive(state, label) {
+      const el = document.getElementById("liveStatus");
+      el.className = "live " + state;
+      el.textContent = label;
+    }
+
+    function connectLive() {
+      let socket;
+      let delay = 1000;
+      let closedByUs = false;
+
+      function open() {
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
+        socket = new WebSocket(`${protocol}://${location.host}/api/test/tasks/${taskId}/ws`);
+        setLive("wait", "Live: connecting");
+        socket.onopen = () => {
+          delay = 1000;
+          setLive("on", "Live: connected");
+          loadCounts();
+        };
+        socket.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type === "annotations_changed") loadCounts();
+          } catch (err) {
+            /* ignore non-JSON keepalive */
+          }
+        };
+        socket.onclose = () => {
+          if (closedByUs) return;
+          setLive("wait", "Live: reconnecting");
+          window.setTimeout(open, delay);
+          delay = Math.min(delay * 2, 15000);
+        };
+        socket.onerror = () => {
+          socket.close();
+        };
+      }
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible" && (!socket || socket.readyState !== WebSocket.OPEN)) {
+          delay = 1000;
+          open();
+        }
+      });
+
+      open();
+    }
+
     loadCounts();
+    connectLive();
   </script>
 </body>
 </html>

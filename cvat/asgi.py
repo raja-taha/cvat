@@ -22,7 +22,6 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "cvat.settings.development")
 
 application = get_asgi_application()
 
-
 if debug.is_debugging_enabled():
 
     class DebuggerApp(ASGIHandler):
@@ -39,3 +38,7 @@ if debug.is_debugging_enabled():
             return await super().handle(*args, **kwargs)
 
     application = DebuggerApp()
+
+from cvat.apps.test.ws import wrap_asgi
+
+application = wrap_asgi(application)

@@ -6,3 +6,8 @@ class TestConfig(AppConfig):
     name = "cvat.apps.test"
     label = "annotation_test"
     verbose_name = "Annotation analytics (assessment)"
+
+    def ready(self) -> None:
+        from cvat.apps.test.hooks import install_annotation_hooks
+
+        install_annotation_hooks()

@@ -19,7 +19,7 @@ Add per-class annotation counts for a CVAT task: read from the database, expose 
 | E | ~0.75 | Item 5. Login required; no access → 403. |
 | F | ~0.75 | Item 6. Speed target, five runs. |
 | G | ~0.5 | Item 7. Group by `source`. |
-| H | remainder | Evidence. Items 8–10 only if 1–7 exist. |
+| H | remainder | Items 8–9 (live WS + reconnect) after 1–7. Evidence, Loom, fork PR. |
 
 ## What changed after the first commit
 
@@ -29,10 +29,15 @@ Add per-class annotation counts for a CVAT task: read from the database, expose 
 - **Item 7** landed with the counts query (always `by_source` and `by_kind`), not as a later add-on. The page filters those fields.
 - **Create project/task** buttons were collapsed to a single **Submit** (no open/continue). Extra to the brief; not required.
 
-## Already skipping (still)
+## Items 8–9 (done after the floor)
 
-- **Items 8–9 (WebSocket live graph + reconnect).** The floor, auth, measurement and source grouping work. A live channel has to follow CVAT’s annotation write path, not a private socket. Time left is for evidence, recording and a PR on this fork, not a half-finished websocket.
-- **Recording and fork PR** are submission steps, not feature work. They are still outstanding at the time of this update.
+Live updates use Redis pub/sub on the in-memory cache DB because the server runs two uvicorn workers. Annotation writes go through `dataset_manager.task` put/patch/delete; `cvat.apps.test.hooks` wraps those functions and publishes `annotations_changed`. The page opens `ws://…/api/test/tasks/<id>/ws` (session cookie + TaskPermission VIEW). If the socket drops, the page reconnects with exponential backoff (1s–15s) and again on tab visible.
+
+Workers still run the published image (no bind-mount), so a dataset import job on a worker will not publish. Saves that hit `cvat_server` do.
+
+## Still outstanding
+
+- **Recording and fork PR** are submission steps, not feature work.
 
 ## Decision record (item 10)
 
@@ -40,8 +45,8 @@ Add per-class annotation counts for a CVAT task: read from the database, expose 
 
 **Rejected:** (1) counting from the uploaded COCO JSON or ClickHouse events — the brief says read from the database; those sources are not the annotation tables. (2) putting the first graph only in `cvat-ui` — a UI image rebuild is slow and failed when Compose also rebuilt the server.
 
-**Cost of rejecting those:** we had to learn Job → Segment → Task and `Label.name`, and live with a page that is not the React SPA until we later rebuilt `cvat_ui` for the menu link. We also cannot show live updates without item 8.
+**Cost of rejecting those:** we had to learn Job → Segment → Task and `Label.name`, and live with a page that is not the React SPA until we later rebuilt `cvat_ui` for the menu link. Live updates needed a custom ASGI wrapper (no Django Channels in this stack).
 
 ## What “done enough to submit” means
 
-Items 1–7 working on the 200-image COCO tasks, three docs with evidence, incremental commits. Do not ship 8–9. Then Loom ≤ 5 minutes and a PR **on this fork** (`dev-test01` → `main` of `raja-taha/cvat`).
+Items 1–9 working on the 200-image COCO tasks, three docs with evidence, incremental commits. Then Loom ≤ 5 minutes and a PR **on this fork** (`dev-test01` → `main` of `raja-taha/cvat`).

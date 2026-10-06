@@ -24,10 +24,13 @@ Written before feature code. Ticked with evidence. A tick with no evidence is un
 
 - [x] Split by annotation `source` (and kind). Evidence: task 1 `person` payload `by_source: {"file": 434}`, `by_kind: {"shape": 434}`. Page filters All / file / manual and Shapes / Tags / Tracks. Chose **source** because COCO import writes `file` and later draws are `manual` — a split you can check after import.
 
+## Live graph (items 8–9)
+
+- [x] Graph updates when annotations change (no full page reload). Evidence: `WS /api/test/tasks/1/ws` with admin session → first frame `{"type":"connected"}`. After `publish_task_changed(1)` (and the same publish from `dataset_manager.task` wrappers), the socket receives `{"type":"annotations_changed","task_id":1}`; the page `loadCounts()` on that message.
+- [x] Client reconnects after a drop. Evidence: `analytics.html` `connectLive()` — onclose waits then `open()` again, delay 1s then doubles up to 15s; `visibilitychange` to visible also reopens if the socket is not OPEN. Live badge: connecting / connected / reconnecting.
+
 ## Not started / not finished
 
-- **Item 8** — live graph over WebSocket: not built. Floor and 5–7 were first; a correct live path has to follow CVAT annotation writes, not a side socket.
-- **Item 9** — recover when the connection drops: depends on 8.
 - **Loom** (≤ 5 min, K1–K4): not recorded yet.
 - **PR** `dev-test01` → `main` on fork `raja-taha/cvat` only: not opened yet.
 
@@ -43,4 +46,4 @@ Written before feature code. Ticked with evidence. A tick with no evidence is un
 
 ## Stop rule
 
-Floor is solid. 5–7 and item 10 (decision record in Plan) are done. Stop before 8–9. Remaining work is recording and the fork PR, not more features.
+Floor plus 5–9 and item 10 (decision record in Plan) are done. Remaining work is recording and the fork PR.

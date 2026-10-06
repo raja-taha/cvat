@@ -8,37 +8,40 @@
 
 Add per-class annotation counts for a CVAT task: read from the database, expose an API, show a graph. Stay inside a new Django app named `test`. Do not open a PR against upstream CVAT.
 
-## Order of work (and time budget)
+## Order of work (original budget)
 
 | Block | Hours | What |
 | --- | --- | --- |
 | A | ~0.5 | This Plan, then Definition of Done and Objectives. No feature code until Plan is committed. |
 | B | (clock not counted) | `CVAT_HOST=localhost docker compose up -d`, superuser, COCO val2017 task. Write down image count. Ready when a job shows labelled boxes. |
-| C | ~2.0 | Item 1. Django app `cvat.apps.test`. `GET /api/test/tasks/<id>/annotation-counts`. Count from DB (`LabeledShape` / `LabeledImage` / `LabeledTrack` → `Job` → `Segment` → `Task`, grouped by `Label.name`). Wire into `INSTALLED_APPS` and `cvat/urls.py` the same way `quality_control` is. |
-| D | ~2.0 | Items 2–4 (floor). A page that calls the API, bar chart (Chart.js already in `cvat-ui`), empty state, failed-request state. |
-| E | ~0.75 | Item 5. Reuse CVAT login and `TaskPermission` view scope. Unauthenticated → 401. No task access → 403. Demonstrate both. |
-| F | ~0.75 | Item 6. One speed target, five runs, median + spread, raw output in Objectives. |
-| G | ~0.5 | Item 7. Extra grouping: count by `source` (`file` vs `manual` vs others). COCO import sets `source=file`; later draws are `manual`. That is a real operational split, not a fake filter. |
-| H | remainder | Evidence in Definition of Done. If time remains, items 8–10. |
+| C | ~2.0 | Item 1. Django app `cvat.apps.test`. `GET /api/test/tasks/<id>/annotation-counts`. |
+| D | ~2.0 | Items 2–4 (floor). Page, graph, empty and failed-request states. |
+| E | ~0.75 | Item 5. Login required; no access → 403. |
+| F | ~0.75 | Item 6. Speed target, five runs. |
+| G | ~0.5 | Item 7. Group by `source`. |
+| H | remainder | Evidence. Items 8–10 only if 1–7 exist. |
 
-## Already decided to skip unless C–D are done and time remains
+## What changed after the first commit
 
-- **Items 8–9 (WebSocket live graph + reconnect).** CVAT annotation writes go through existing job APIs; a correct live channel needs their event path, not a side websocket. Starting that before the floor works is an automatic waste of the assessment.
-- **Item 10** only if 1–7 exist; then close this Plan with the decision record.
+- **Server code** is bind-mounted into `cvat_server` (`/opt/cvat/cvat`) so we did not rebuild the server image. Rebuilding the server with `docker-compose.dev.yml` failed once on a truncated FFmpeg download; we left workers on the published image.
+- **Page (item 2):** Traefik only sends `/api/` to Django. The floor page is therefore Django HTML at `/api/test/tasks/<id>/analytics`, not a first-cut `cvat-ui` Chart.js route. Later we rebuilt **only** `cvat_ui` so Jobs/Tasks **View analytics** opens that URL instead of the paid `/tasks/:id/jobs/:id/analytics` page.
+- **Sample data:** 200 COCO val2017 images per task, not the full 5,000. The full `instances_val2017.json` does not match a 200-frame task (`Could not match item id`). We import a filtered subset. Labels must be the lowercase COCO names (`person` ≠ `Person`).
+- **Item 7** landed with the counts query (always `by_source` and `by_kind`), not as a later add-on. The page filters those fields.
+- **Create project/task** buttons were collapsed to a single **Submit** (no open/continue). Extra to the brief; not required.
 
-## How the published images will see our code
+## Already skipping (still)
 
-`docker compose up -d` runs `cvat/server:dev` and `cvat/ui:dev`. Those images do not contain this branch.
+- **Items 8–9 (WebSocket live graph + reconnect).** The floor, auth, measurement and source grouping work. A live channel has to follow CVAT’s annotation write path, not a private socket. Time left is for evidence, recording and a PR on this fork, not a half-finished websocket.
+- **Recording and fork PR** are submission steps, not feature work. They are still outstanding at the time of this update.
 
-- **Server:** after the `test` app exists, rebuild `cvat_server` with `docker-compose.yml` + `docker-compose.dev.yml`, or copy the app into the container and restart. Prefer rebuild of **server only** so workers keep running.
-- **UI:** Traefik sends only `/api/`, `/static/`, `/admin`, `/django-rq` to Django. A “page in the web interface” therefore has to live in `cvat-ui`, **or** be served under `/api/test/...` as HTML. First choice: a Django-served HTML page under `/api/test/` so items 2–4 do not depend on rebuilding the UI image. If that lands quickly, add a `cvat-ui` route and rebuild UI.
+## Decision record (item 10)
 
-## Approach taken vs rejected (preview; full record at item 10)
+**Took:** a new Django app `cvat.apps.test` that `COUNT`s `LabeledShape` / `LabeledImage` / `LabeledTrack` grouped by `Label`, behind `TaskPermission` VIEW. The page is HTML under `/api/test/` so Traefik routes it without a UI rebuild for items 1–4.
 
-- **Take:** new app `test`, SQL `COUNT` + `GROUP BY` on existing annotation tables. Contained, matches the brief, cheap to measure.
-- **Reject:** counting from exported COCO JSON or from ClickHouse events. Export is not “read from the database”. Events are not the annotation tables.
-- **Cost of rejecting export:** we must learn CVAT’s job/segment/task and label FKs instead of parsing a file we already uploaded.
+**Rejected:** (1) counting from the uploaded COCO JSON or ClickHouse events — the brief says read from the database; those sources are not the annotation tables. (2) putting the first graph only in `cvat-ui` — a UI image rebuild is slow and failed when Compose also rebuilt the server.
+
+**Cost of rejecting those:** we had to learn Job → Segment → Task and `Label.name`, and live with a page that is not the React SPA until we later rebuilt `cvat_ui` for the menu link. We also cannot show live updates without item 8.
 
 ## What “done enough to submit” means
 
-Items 1–4 working on the COCO task, three docs present, incremental commits, recording still to do at the end. Stop rather than ship a broken 8–9.
+Items 1–7 working on the 200-image COCO tasks, three docs with evidence, incremental commits. Do not ship 8–9. Then Loom ≤ 5 minutes and a PR **on this fork** (`dev-test01` → `main` of `raja-taha/cvat`).

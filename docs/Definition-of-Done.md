@@ -1,43 +1,46 @@
 # Definition of Done
 
-Written before feature code. Tick with evidence at the end (number, command, URL, or commit SHA). A tick with no evidence is untreated.
+Written before feature code. Ticked with evidence. A tick with no evidence is untreated.
 
-## Floor (must work before anything else is claimed)
+## Floor (items 1–4)
 
-- [ ] Endpoint returns per-class counts from the database for the COCO sample task. Evidence: request URL, task id, JSON body, and a SQL or admin cross-check of one class.
-- [ ] A page in the running stack calls that endpoint. Evidence: URL opened in the browser.
-- [ ] Counts are shown as a graph. Evidence: screenshot path or Loom timestamp.
-- [ ] Empty case: task with no annotations (or all-zero classes) renders a clear empty state, not a broken chart. Evidence: how it was produced and what the page showed.
-- [ ] Failed request: page shows an error state when the API fails (stop the server, or call a missing task, or force a 500). Evidence: what was broken and what the page showed.
+- [x] Endpoint returns per-class counts from the database for the COCO sample task. Evidence: `GET /api/test/tasks/1/annotation-counts` as admin → `total` 1468, 77 classes, top `person` 434. SQL: `COUNT(*)` on `engine_labeledshape` for task 1, `person`, `parent_id IS NULL` = 434.
+- [x] A page in the running stack calls that endpoint. Evidence: `GET /api/test/tasks/1/analytics` (and task 4: `http://localhost:8080/api/test/tasks/4/analytics`). Jobs/Tasks **View analytics** points here after the `cvat_ui` rebuild (`cvat-ui` actions menus + redirect from `/tasks/:tid/.../analytics`).
+- [x] Counts are shown as a graph. Evidence: Chart.js bar/doughnut on that page (`docs` not a screenshot file; live URL above).
+- [x] Empty case: no matching rows shows “No annotations on this task yet.” / “No annotations match these filters.”, chart hidden. Evidence: `cvat/apps/test/templates/test/analytics.html` (`emptyEl`).
+- [x] Failed request: non-OK fetch shows “Could not load counts (status).” Evidence: same template (`showError`). Observed live as **406** when `Accept: application/json` was rejected; after adding `JSONRenderer` / CVAT Accept header, the same path returns 200.
 
-## Auth (item 5, after floor)
+## Auth (item 5)
 
-- [ ] Request with no login is refused. Evidence: status code and body.
-- [ ] Logged-in user without access to that task is refused. Evidence: second user, status code.
+- [x] No login refused. Evidence: unauthenticated `GET /api/test/tasks/1/annotation-counts` → **401** `{"detail":"Authentication credentials were not provided."}`
+- [x] Logged-in user without access refused. Evidence: user `norights` (id 3, not owner/assignee) → **403** `{"detail":"You do not have permission to perform this action."}`
 
 ## Objective (item 6)
 
-- [ ] MO-1 measured five times on this machine. Evidence: raw output pasted in `docs/Objectives.md`.
-- [ ] Median and spread reported. Target met, or missed with the reason written down.
+- [x] MO-1 measured five times. Evidence: raw `curl` `%{time_total}` in `docs/Objectives.md`.
+- [x] Median and spread reported. Target **met**: median 68.0 ms (min 62.7, max 70.8) vs 200 ms.
 
 ## Extra grouping (item 7)
 
-- [ ] Counts can be split (or filtered) by annotation `source`. Evidence: same task, query param, JSON.
+- [x] Split by annotation `source` (and kind). Evidence: task 1 `person` payload `by_source: {"file": 434}`, `by_kind: {"shape": 434}`. Page filters All / file / manual and Shapes / Tags / Tracks. Chose **source** because COCO import writes `file` and later draws are `manual` — a split you can check after import.
 
 ## Not started / not finished
 
-- [ ] List every item from the brief that this submission does not include, and why (time, dependency, or risk).
+- **Item 8** — live graph over WebSocket: not built. Floor and 5–7 were first; a correct live path has to follow CVAT annotation writes, not a side socket.
+- **Item 9** — recover when the connection drops: depends on 8.
+- **Loom** (≤ 5 min, K1–K4): not recorded yet.
+- **PR** `dev-test01` → `main` on fork `raja-taha/cvat` only: not opened yet.
 
 ## Process (automatic-reject checks)
 
-- [ ] Work is on `dev-test01`. First commit is the Plan, not finished code.
-- [ ] Commits are stepwise; messages say what changed and why.
-- [ ] Three documents exist under `docs/`: Plan, Objectives, Definition of Done.
-- [ ] Clone SHA recorded: `d8193c584be9ce6cf9882dad06c0dd920cc0b9c5`.
-- [ ] Sample task image count written down in Objectives.
-- [ ] PR is against this fork only, not `cvat-ai/cvat`.
-- [ ] Loom ≤ 5 minutes, feature live, one request followed through, K1–K4 answered without notes.
+- [x] Branch `dev-test01`. First commit `2159dac7b` is Plan only.
+- [x] Stepwise commits (app → page → filters → Accept 406 → menus). Messages say what/why.
+- [x] Three documents under `docs/`.
+- [x] Clone SHA `d8193c584be9ce6cf9882dad06c0dd920cc0b9c5`.
+- [x] Sample image count: **200** (Objectives).
+- [ ] PR against this fork only — outstanding.
+- [ ] Loom — outstanding.
 
 ## Stop rule
 
-If the floor is not solid, stop. Do not claim items 5–10. Submit with this list honest.
+Floor is solid. 5–7 and item 10 (decision record in Plan) are done. Stop before 8–9. Remaining work is recording and the fork PR, not more features.

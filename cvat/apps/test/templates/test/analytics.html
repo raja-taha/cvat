@@ -47,7 +47,10 @@
       try {
         const response = await fetch(
           `/api/test/tasks/${taskId}/annotation-counts`,
-          { credentials: "same-origin", headers: { Accept: "application/json" } }
+          {
+            credentials: "same-origin",
+            headers: { Accept: "application/vnd.cvat+json; version=2.0" },
+          }
         );
         if (!response.ok) {
           showError(`Could not load counts (${response.status}).`);

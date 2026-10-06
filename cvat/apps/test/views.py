@@ -1,7 +1,10 @@
 from django.shortcuts import render
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
+
+from cvat.apps.engine.renderers import CVATAPIRenderer
 
 from cvat.apps.engine.models import Task
 from cvat.apps.test.counts import count_annotations_by_class, count_annotations_by_class_and_source
@@ -14,6 +17,7 @@ class TaskAnalyticsViewSet(viewsets.GenericViewSet):
     # This is a retrieve-style endpoint. CVAT's global list filters expect
     # search_fields / lookup_fields and crash get_object without them.
     filter_backends = []
+    renderer_classes = [CVATAPIRenderer, JSONRenderer]
 
     def _payload(self, task: Task, request) -> dict:
         group_by = request.query_params.get("group_by")

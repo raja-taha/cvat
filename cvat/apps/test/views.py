@@ -28,6 +28,7 @@ class TaskAnalyticsViewSet(viewsets.GenericViewSet):
         return {
             "task_id": task.id,
             "task_name": task.name,
+            "project_id": task.project_id,
             "group_by": group_by if group_by == "source" else None,
             "classes": classes,
             "total": sum(item["count"] for item in classes),
@@ -47,5 +48,6 @@ class TaskAnalyticsViewSet(viewsets.GenericViewSet):
             {
                 "task_id": task.id,
                 "task_name": task.name,
+                "project_id": task.project_id,
             },
         )

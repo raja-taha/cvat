@@ -3,31 +3,122 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Annotation counts — {{ task_name }}</title>
+  <title>Annotation analytics — {{ task_name }}</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
   <style>
-    :root { color-scheme: light; font-family: Segoe UI, system-ui, sans-serif; }
-    body { margin: 0; background: #f5f5f5; color: #1f1f1f; }
-    header { background: #fff; border-bottom: 1px solid #e5e5e5; padding: 16px 24px; }
-    h1 { font-size: 20px; margin: 0 0 4px; }
-    .meta { color: #666; font-size: 13px; }
-    main { max-width: 960px; margin: 24px auto; padding: 0 16px; }
-    .panel { background: #fff; border: 1px solid #e5e5e5; border-radius: 8px; padding: 24px; min-height: 280px; }
-    .state { padding: 48px 16px; text-align: center; color: #555; }
-    .state.error { color: #a8071a; }
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --text: #262626;
+      --muted: #8c8c8c;
+      --border: #f0f0f0;
+      --primary: #1890ff;
+      --shadow: 0 1px 2px rgba(0,0,0,.06), 0 1px 6px rgba(0,0,0,.04);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .top {
+      background: #fff; border-bottom: 1px solid var(--border);
+      padding: 12px 28px; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+    }
+    .top h1 { font-size: 18px; margin: 0 0 2px; font-weight: 600; }
+    .meta { color: var(--muted); font-size: 13px; }
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button, select, input[type="search"] {
+      font: inherit; border: 1px solid #d9d9d9; border-radius: 6px; background: #fff; padding: 6px 12px; color: var(--text);
+    }
+    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); cursor: pointer; }
+    button.primary:hover { filter: brightness(1.05); }
+    button { cursor: pointer; }
+    button.active { border-color: var(--primary); color: var(--primary); }
+    main { max-width: 1180px; margin: 20px auto 40px; padding: 0 20px; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .kpi { background: var(--card); border-radius: 8px; box-shadow: var(--shadow); padding: 16px 18px; }
+    .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+    .kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; }
+    .kpi .hint { color: var(--muted); font-size: 12px; margin-top: 4px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .toolbar input[type="search"] { min-width: 220px; flex: 1; }
+    .layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+    .panel { background: var(--card); border-radius: 8px; box-shadow: var(--shadow); padding: 16px; min-height: 320px; }
+    .panel h2 { margin: 0 0 12px; font-size: 15px; font-weight: 600; }
+    .state { padding: 56px 16px; text-align: center; color: var(--muted); }
+    .state.error { color: #cf1322; }
     canvas { max-height: 420px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 6px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: middle; }
+    .bar { height: 6px; background: #f5f5f5; border-radius: 99px; overflow: hidden; min-width: 64px; }
+    .bar > span { display: block; height: 100%; background: var(--primary); }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Annotations by class</h1>
-    <div class="meta">Task {{ task_id }} — {{ task_name }}</div>
-  </header>
+  <div class="top">
+    <div>
+      <h1>Annotation analytics</h1>
+      <div class="meta">
+        Task {{ task_id }} — {{ task_name }}
+        {% if project_id %} · <a href="/projects/{{ project_id }}">Project {{ project_id }}</a>{% endif %}
+        · <a href="/tasks/{{ task_id }}">Open task</a>
+      </div>
+    </div>
+    <div class="actions">
+      <button type="button" class="primary" id="exportCsv">Export CSV</button>
+    </div>
+  </div>
   <main>
-    <div class="panel">
-      <div id="empty" class="state" hidden>No annotations on this task yet.</div>
-      <div id="error" class="state error" hidden></div>
-      <canvas id="chart" hidden></canvas>
+    <div class="kpis">
+      <div class="kpi"><div class="label">Annotations</div><div class="value" id="kpiTotal">—</div></div>
+      <div class="kpi"><div class="label">Classes with data</div><div class="value" id="kpiClasses">—</div></div>
+      <div class="kpi"><div class="label">Top class</div><div class="value" id="kpiTop">—</div><div class="hint" id="kpiTopHint"></div></div>
+      <div class="kpi"><div class="label">Imported (file)</div><div class="value" id="kpiFile">—</div></div>
+    </div>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Filter classes">
+      <select id="sourceFilter">
+        <option value="all">All sources</option>
+        <option value="file">Imported (file)</option>
+        <option value="manual">Manual</option>
+        <option value="auto">Auto</option>
+        <option value="semi-auto">Semi-auto</option>
+      </select>
+      <select id="kindFilter">
+        <option value="all">All types</option>
+        <option value="shape">Shapes</option>
+        <option value="tag">Tags</option>
+        <option value="track">Tracks</option>
+      </select>
+      <button type="button" id="chartBar" class="active">Bar</button>
+      <button type="button" id="chartDoughnut">Doughnut</button>
+    </div>
+    <div class="layout">
+      <div class="panel">
+        <h2>Distribution</h2>
+        <div id="empty" class="state" hidden>No annotations match these filters.</div>
+        <div id="error" class="state error" hidden></div>
+        <canvas id="chart" hidden></canvas>
+      </div>
+      <div class="panel">
+        <h2>By class</h2>
+        <div style="overflow:auto; max-height: 460px;">
+          <table>
+            <thead>
+              <tr>
+                <th data-sort="name">Class</th>
+                <th class="num" data-sort="count">Count</th>
+                <th class="num" data-sort="pct">Share</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
   </main>
   <script>
@@ -35,18 +126,100 @@
     const emptyEl = document.getElementById("empty");
     const errorEl = document.getElementById("error");
     const canvas = document.getElementById("chart");
+    const tbody = document.getElementById("tbody");
+    let rawClasses = [];
+    let chart;
+    let chartType = "bar";
+    let sortKey = "count";
+    let sortDir = -1;
 
     function showError(message) {
       emptyEl.hidden = true;
       canvas.hidden = true;
       errorEl.hidden = false;
       errorEl.textContent = message;
+      tbody.innerHTML = "";
+    }
+
+    function valueFor(row, source, kind) {
+      if (source !== "all" && kind !== "all") {
+        return Math.min(row.by_source[source] || 0, row.by_kind[kind] || 0);
+      }
+      if (source !== "all") return row.by_source[source] || 0;
+      if (kind !== "all") return row.by_kind[kind] || 0;
+      return row.count;
+    }
+
+    function filtered() {
+      const q = document.getElementById("search").value.trim().toLowerCase();
+      const source = document.getElementById("sourceFilter").value;
+      const kind = document.getElementById("kindFilter").value;
+      return rawClasses
+        .map((row) => ({ ...row, shown: valueFor(row, source, kind) }))
+        .filter((row) => row.shown > 0 && row.name.toLowerCase().includes(q))
+        .sort((a, b) => {
+          const av = sortKey === "name" ? a.name.toLowerCase() : a.shown;
+          const bv = sortKey === "name" ? b.name.toLowerCase() : b.shown;
+          if (av < bv) return -1 * sortDir;
+          if (av > bv) return 1 * sortDir;
+          return 0;
+        });
+    }
+
+    function render() {
+      const rows = filtered();
+      const total = rows.reduce((sum, row) => sum + row.shown, 0);
+      document.getElementById("kpiTotal").textContent = total.toLocaleString();
+      document.getElementById("kpiClasses").textContent = String(rows.length);
+      const top = rows[0];
+      document.getElementById("kpiTop").textContent = top ? top.name : "—";
+      document.getElementById("kpiTopHint").textContent = top && total ? `${Math.round((top.shown / total) * 100)}% of filtered` : "";
+      const fileTotal = rawClasses.reduce((sum, row) => sum + (row.by_source.file || 0), 0);
+      document.getElementById("kpiFile").textContent = fileTotal.toLocaleString();
+
+      if (!rows.length) {
+        errorEl.hidden = true;
+        canvas.hidden = true;
+        emptyEl.hidden = false;
+        if (chart) chart.destroy();
+        tbody.innerHTML = "";
+        return;
+      }
+      emptyEl.hidden = true;
+      errorEl.hidden = true;
+      canvas.hidden = false;
+      const labels = rows.map((row) => row.name);
+      const values = rows.map((row) => row.shown);
+      const colors = rows.map((row) => row.color || "#1890ff");
+      if (chart) chart.destroy();
+      chart = new Chart(canvas, {
+        type: chartType,
+        data: {
+          labels,
+          datasets: [{ label: "Annotations", data: values, backgroundColor: colors, borderWidth: 0 }],
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: chartType !== "bar" } },
+          scales: chartType === "bar" ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : undefined,
+        },
+      });
+
+      tbody.innerHTML = rows.map((row) => {
+        const pct = total ? (row.shown / total) * 100 : 0;
+        return `<tr>
+          <td><span class="swatch" style="background:${row.color || "#1890ff"}"></span>${row.name}</td>
+          <td class="num">${row.shown.toLocaleString()}</td>
+          <td class="num">${pct.toFixed(1)}%</td>
+          <td><div class="bar"><span style="width:${pct}%; background:${row.color || "#1890ff"}"></span></div></td>
+        </tr>`;
+      }).join("");
     }
 
     async function loadCounts() {
       try {
         const response = await fetch(
-          `/api/test/tasks/${taskId}/annotation-counts`,
+          `/api/test/tasks/${taskId}/annotation-counts?group_by=source`,
           {
             credentials: "same-origin",
             headers: { Accept: "application/vnd.cvat+json; version=2.0" },
@@ -57,35 +230,70 @@
           return;
         }
         const data = await response.json();
-        const classes = data.classes || [];
-        if (!classes.length || classes.every((row) => row.count === 0)) {
-          errorEl.hidden = true;
-          canvas.hidden = true;
+        rawClasses = (data.classes || []).map((row) => ({
+          ...row,
+          by_source: row.by_source || {},
+          by_kind: row.by_kind || {},
+        }));
+        if (!rawClasses.length) {
+          showError("");
           emptyEl.hidden = false;
+          emptyEl.textContent = "No annotations on this task yet.";
           return;
         }
-        emptyEl.hidden = true;
-        errorEl.hidden = true;
-        canvas.hidden = false;
-        const labels = classes.map((row) => row.name);
-        const values = classes.map((row) => row.count);
-        const colors = classes.map((row) => row.color || "#1677ff");
-        new Chart(canvas, {
-          type: "bar",
-          data: {
-            labels,
-            datasets: [{ label: "Annotations", data: values, backgroundColor: colors }],
-          },
-          options: {
-            responsive: true,
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
-          },
-        });
+        render();
       } catch (err) {
         showError("Could not reach the server. Check the connection and try again.");
       }
     }
+
+    document.getElementById("search").addEventListener("input", render);
+    document.getElementById("sourceFilter").addEventListener("change", render);
+    document.getElementById("kindFilter").addEventListener("change", render);
+    document.getElementById("chartBar").addEventListener("click", () => {
+      chartType = "bar";
+      document.getElementById("chartBar").classList.add("active");
+      document.getElementById("chartDoughnut").classList.remove("active");
+      render();
+    });
+    document.getElementById("chartDoughnut").addEventListener("click", () => {
+      chartType = "doughnut";
+      document.getElementById("chartDoughnut").classList.add("active");
+      document.getElementById("chartBar").classList.remove("active");
+      render();
+    });
+    document.querySelectorAll("th[data-sort]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = th.getAttribute("data-sort");
+        if (sortKey === key) sortDir *= -1;
+        else { sortKey = key === "pct" ? "count" : key; sortDir = key === "name" ? 1 : -1; }
+        render();
+      });
+    });
+    document.getElementById("exportCsv").addEventListener("click", () => {
+      const rows = filtered();
+      const total = rows.reduce((sum, row) => sum + row.shown, 0) || 1;
+      const lines = [["class", "count", "share_percent", "file", "manual", "shapes", "tags", "tracks"].join(",")];
+      rows.forEach((row) => {
+        lines.push([
+          `"${row.name.replaceAll('"', '""')}"`,
+          row.shown,
+          ((row.shown / total) * 100).toFixed(2),
+          row.by_source.file || 0,
+          row.by_source.manual || 0,
+          row.by_kind.shape || 0,
+          row.by_kind.tag || 0,
+          row.by_kind.track || 0,
+        ].join(","));
+      });
+      const blob = new Blob([lines.join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `task-${taskId}-annotation-counts.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
 
     loadCounts();
   </script>

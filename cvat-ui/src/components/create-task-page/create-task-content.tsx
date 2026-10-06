@@ -520,19 +520,9 @@ class CreateTaskContent extends React.PureComponent<Props & RouteComponentProps,
             });
     });
 
-    private handleSubmitAndOpen = (): void => {
+    private handleSubmit = (): void => {
         const { history } = this.props;
 
-        this.validateBlocks()
-            .then(this.createOneTask)
-            .then((createdTask) => {
-                const { id } = createdTask;
-                history.push(`/tasks/${id}`);
-            })
-            .catch(() => {});
-    };
-
-    private handleSubmitAndContinue = (): void => {
         this.validateBlocks()
             .then(this.createOneTask)
             .then(() => {
@@ -540,9 +530,13 @@ class CreateTaskContent extends React.PureComponent<Props & RouteComponentProps,
                     message: 'The task has been created',
                     className: 'cvat-notification-create-task-success',
                 });
+                const { projectId } = this.state;
+                if (projectId) {
+                    history.push(`/projects/${projectId}`);
+                } else {
+                    history.push('/tasks');
+                }
             })
-            .then(this.resetState)
-            .then(this.focusToForm)
             .catch(() => {});
     };
 
@@ -971,22 +965,12 @@ class CreateTaskContent extends React.PureComponent<Props & RouteComponentProps,
             <Row justify='end' gutter={8}>
                 <Col>
                     <Button
-                        className='cvat-submit-open-task-button'
+                        className='cvat-submit-task-button'
                         type='primary'
-                        onClick={this.handleSubmitAndOpen}
+                        onClick={this.handleSubmit}
                         disabled={!!uploadFileErrorMessage}
                     >
-                        Submit & Open
-                    </Button>
-                </Col>
-                <Col>
-                    <Button
-                        className='cvat-submit-continue-task-button'
-                        type='primary'
-                        onClick={this.handleSubmitAndContinue}
-                        disabled={!!uploadFileErrorMessage}
-                    >
-                        Submit & Continue
+                        Submit
                     </Button>
                 </Col>
             </Row>

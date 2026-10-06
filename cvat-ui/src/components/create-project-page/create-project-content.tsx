@@ -134,14 +134,6 @@ export default function CreateProjectContent(): JSX.Element {
     const dispatch = useDispatch();
     const history = useHistory();
 
-    const resetForm = (): void => {
-        if (nameFormRef.current) nameFormRef.current.resetFields();
-        if (advancedFormRef.current) advancedFormRef.current.resetFields();
-        setProjectLabels([]);
-        setSourceStorageLocation(StorageLocation.LOCAL);
-        setTargetStorageLocation(StorageLocation.LOCAL);
-    };
-
     const focusForm = (): void => {
         nameInputRef.current?.focus();
     };
@@ -175,22 +167,14 @@ export default function CreateProjectContent(): JSX.Element {
         }
     };
 
-    const onSubmitAndOpen = async (): Promise<void> => {
+    const onSubmit = async (): Promise<void> => {
         const createdProject = await submit();
         if (createdProject) {
-            history.push(`/projects/${createdProject.id}`);
-        }
-    };
-
-    const onSubmitAndContinue = async (): Promise<void> => {
-        const res = await submit();
-        if (res) {
-            resetForm();
             notification.info({
                 message: 'The project has been created',
                 className: 'cvat-notification-create-project-success',
             });
-            focusForm();
+            history.push('/projects');
         }
     };
 
@@ -237,13 +221,8 @@ export default function CreateProjectContent(): JSX.Element {
             <Col span={24}>
                 <Row justify='end' gutter={8}>
                     <Col>
-                        <Button className='cvat-submit-open-project-button' type='primary' onClick={onSubmitAndOpen}>
-                            Submit & Open
-                        </Button>
-                    </Col>
-                    <Col>
-                        <Button className='cvat-submit-continue-project-button' type='primary' onClick={onSubmitAndContinue}>
-                            Submit & Continue
+                        <Button className='cvat-submit-project-button' type='primary' onClick={onSubmit}>
+                            Submit
                         </Button>
                     </Col>
                 </Row>

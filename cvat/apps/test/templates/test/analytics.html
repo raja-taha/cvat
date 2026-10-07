@@ -75,7 +75,7 @@
       </div>
     </div>
     <div class="actions">
-      <span class="live wait" id="liveStatus">Live: connecting</span>
+      <span class="live wait" id="liveStatus" title="The chart refreshes when a job on this task is saved">Live: connecting</span>
       <button type="button" class="primary" id="exportCsv">Export CSV</button>
     </div>
   </div>
@@ -140,6 +140,11 @@
     let chartType = "bar";
     let sortKey = "count";
     let sortDir = -1;
+    let lastTotal = -1;
+    let lastFingerprint = "";
+    let loadTimer = 0;
+    let loading = false;
+    let loadQueued = false;
 
     function showError(message) {
       emptyEl.hidden = true;
@@ -174,9 +179,54 @@
         });
     }
 
+    function dataFingerprint(classes) {
+      return classes
+        .map((row) => `${row.name}:${row.count}:${row.by_source.file || 0}:${row.by_source.manual || 0}:${row.by_kind.shape || 0}`)
+        .join("|");
+    }
+
+    function viewFingerprint(rows) {
+      return `${chartType}|${sortKey}|${sortDir}|` + rows.map((row) => `${row.name}:${row.shown}`).join("|");
+    }
+
+    function syncChart(labels, values, colors) {
+      const showLegend = chartType !== "bar";
+      if (chart && chart.config.type === chartType) {
+        chart.data.labels = labels;
+        chart.data.datasets[0].data = values;
+        chart.data.datasets[0].backgroundColor = colors;
+        chart.options.plugins.legend.display = showLegend;
+        chart.update("none");
+        return;
+      }
+      if (chart) {
+        chart.destroy();
+        chart = null;
+      }
+      chart = new Chart(canvas, {
+        type: chartType,
+        data: {
+          labels,
+          datasets: [{ label: "Annotations", data: values, backgroundColor: colors, borderWidth: 0 }],
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          plugins: { legend: { display: showLegend } },
+          scales: chartType === "bar" ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : undefined,
+        },
+      });
+    }
+
     function render() {
       const rows = filtered();
       const total = rows.reduce((sum, row) => sum + row.shown, 0);
+      const viewKey = viewFingerprint(rows) + `|${total}`;
+      if (viewKey === lastFingerprint && document.getElementById("kpiTotal").textContent) {
+        return;
+      }
+      lastFingerprint = viewKey;
+
       document.getElementById("kpiTotal").textContent = total.toLocaleString();
       document.getElementById("kpiClasses").textContent = String(rows.length);
       const top = rows[0];
@@ -189,29 +239,21 @@
         errorEl.hidden = true;
         canvas.hidden = true;
         emptyEl.hidden = false;
-        if (chart) chart.destroy();
+        if (chart) {
+          chart.destroy();
+          chart = null;
+        }
         tbody.innerHTML = "";
         return;
       }
       emptyEl.hidden = true;
       errorEl.hidden = true;
       canvas.hidden = false;
-      const labels = rows.map((row) => row.name);
-      const values = rows.map((row) => row.shown);
-      const colors = rows.map((row) => row.color || "#1890ff");
-      if (chart) chart.destroy();
-      chart = new Chart(canvas, {
-        type: chartType,
-        data: {
-          labels,
-          datasets: [{ label: "Annotations", data: values, backgroundColor: colors, borderWidth: 0 }],
-        },
-        options: {
-          responsive: true,
-          plugins: { legend: { display: chartType !== "bar" } },
-          scales: chartType === "bar" ? { y: { beginAtZero: true, ticks: { precision: 0 } } } : undefined,
-        },
-      });
+      syncChart(
+        rows.map((row) => row.name),
+        rows.map((row) => row.shown),
+        rows.map((row) => row.color || "#1890ff"),
+      );
 
       tbody.innerHTML = rows.map((row) => {
         const pct = total ? (row.shown / total) * 100 : 0;
@@ -225,12 +267,21 @@
     }
 
     async function loadCounts() {
+      if (loading) {
+        loadQueued = true;
+        return;
+      }
+      loading = true;
       try {
         const response = await fetch(
-          `/api/test/tasks/${taskId}/annotation-counts?group_by=source`,
+          `/api/test/tasks/${taskId}/annotation-counts?group_by=source&_=${Date.now()}`,
           {
+            cache: "no-store",
             credentials: "same-origin",
-            headers: { Accept: "application/vnd.cvat+json; version=2.0" },
+            headers: {
+              Accept: "application/vnd.cvat+json; version=2.0",
+              "Cache-Control": "no-cache",
+            },
           }
         );
         if (!response.ok) {
@@ -238,16 +289,31 @@
           return;
         }
         const data = await response.json();
-        rawClasses = (data.classes || []).map((row) => ({
+        const next = (data.classes || []).map((row) => ({
           ...row,
           by_source: row.by_source || {},
           by_kind: row.by_kind || {},
         }));
+        const totalNow = Number(data.total) || 0;
+        const nextFp = dataFingerprint(next);
+        if (nextFp === dataFingerprint(rawClasses) && lastTotal === totalNow && rawClasses.length) {
+          return;
+        }
+        rawClasses = next;
+        if (lastTotal >= 0 && totalNow !== lastTotal) {
+          setLive("on", `Live: ${totalNow.toLocaleString()} annotations`);
+        }
+        lastTotal = totalNow;
         if (!rawClasses.length) {
+          lastFingerprint = "";
           emptyEl.hidden = false;
           emptyEl.textContent = "No annotations on this task yet.";
           canvas.hidden = true;
           errorEl.hidden = true;
+          if (chart) {
+            chart.destroy();
+            chart = null;
+          }
           tbody.innerHTML = "";
           document.getElementById("kpiTotal").textContent = "0";
           document.getElementById("kpiClasses").textContent = "0";
@@ -258,6 +324,12 @@
         render();
       } catch (err) {
         showError("Could not reach the server. Check the connection and try again.");
+      } finally {
+        loading = false;
+        if (loadQueued) {
+          loadQueued = false;
+          loadCountsSoon();
+        }
       }
     }
 
@@ -266,12 +338,14 @@
     document.getElementById("kindFilter").addEventListener("change", render);
     document.getElementById("chartBar").addEventListener("click", () => {
       chartType = "bar";
+      lastFingerprint = "";
       document.getElementById("chartBar").classList.add("active");
       document.getElementById("chartDoughnut").classList.remove("active");
       render();
     });
     document.getElementById("chartDoughnut").addEventListener("click", () => {
       chartType = "doughnut";
+      lastFingerprint = "";
       document.getElementById("chartDoughnut").classList.add("active");
       document.getElementById("chartBar").classList.remove("active");
       render();
@@ -281,6 +355,7 @@
         const key = th.getAttribute("data-sort");
         if (sortKey === key) sortDir *= -1;
         else { sortKey = key === "pct" ? "count" : key; sortDir = key === "name" ? 1 : -1; }
+        lastFingerprint = "";
         render();
       });
     });
@@ -315,43 +390,51 @@
       el.textContent = label;
     }
 
+    function loadCountsSoon() {
+      window.clearTimeout(loadTimer);
+      // Coalesce rapid import chunks into one quiet chart update.
+      loadTimer = window.setTimeout(loadCounts, 400);
+    }
+
     function connectLive() {
       let socket;
       let delay = 1000;
-      let closedByUs = false;
 
       function open() {
+        if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
+          return;
+        }
         const protocol = location.protocol === "https:" ? "wss" : "ws";
         socket = new WebSocket(`${protocol}://${location.host}/api/test/tasks/${taskId}/ws`);
         setLive("wait", "Live: connecting");
         socket.onopen = () => {
           delay = 1000;
           setLive("on", "Live: connected");
-          loadCounts();
         };
         socket.onmessage = (event) => {
           try {
             const payload = JSON.parse(event.data);
-            if (payload.type === "annotations_changed") loadCounts();
+            if (payload.type === "annotations_changed") {
+              setLive("on", "Live: updating…");
+              loadCountsSoon();
+            }
           } catch (err) {
             /* ignore non-JSON keepalive */
           }
         };
         socket.onclose = () => {
-          if (closedByUs) return;
           setLive("wait", "Live: reconnecting");
           window.setTimeout(open, delay);
           delay = Math.min(delay * 2, 15000);
         };
-        socket.onerror = () => {
-          socket.close();
-        };
       }
 
       document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible" && (!socket || socket.readyState !== WebSocket.OPEN)) {
-          delay = 1000;
-          open();
+        if (document.visibilityState === "visible") {
+          if (!socket || socket.readyState !== WebSocket.OPEN) {
+            delay = 1000;
+            open();
+          }
         }
       });
 

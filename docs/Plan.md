@@ -25,7 +25,7 @@ Add per-class annotation counts for a CVAT task: read from the database, expose 
 
 - **Server code** is bind-mounted into `cvat_server` (`/opt/cvat/cvat`) so we did not rebuild the server image. Rebuilding the server with `docker-compose.dev.yml` failed once on a truncated FFmpeg download; we left workers on the published image.
 - **Page (item 2):** Traefik only sends `/api/` to Django. The floor page is therefore Django HTML at `/api/test/tasks/<id>/analytics`, not a first-cut `cvat-ui` Chart.js route. Later we rebuilt **only** `cvat_ui` so Jobs/Tasks **View analytics** opens that URL instead of the paid `/tasks/:id/jobs/:id/analytics` page.
-- **Sample data:** 200 COCO val2017 images per task, not the full 5,000. The full `instances_val2017.json` does not match a 200-frame task (`Could not match item id`). We import a filtered subset. Labels must be the lowercase COCO names (`person` ≠ `Person`).
+- **Sample data:** first pass used 200 COCO val2017 images per task. Later we unpacked **2000** frames into task 8 (`COCO val2017 2000`, project 1). The full `instances_val2017.json` does not match a subset task (`Could not match item id`); we import a filtered subset. Labels must be the lowercase COCO names (`person` ≠ `Person`).
 - **Item 7** landed with the counts query (always `by_source` and `by_kind`), not as a later add-on. The page filters those fields.
 - **Create project/task** buttons were collapsed to a single **Submit** (no open/continue). Extra to the brief; not required.
 
@@ -49,4 +49,4 @@ Workers still run the published image (no bind-mount), so a dataset import job o
 
 ## What “done enough to submit” means
 
-Items 1–9 working on the 200-image COCO tasks, three docs with evidence, incremental commits. Then Loom ≤ 5 minutes and a PR **on this fork** (`dev-test01` → `main` of `raja-taha/cvat`).
+Items 1–9 working on the 2000-image COCO task (plus the earlier 200-image tasks), three docs with evidence, incremental commits. Then Loom ≤ 5 minutes and a PR **on this fork** (`dev-test01` → `main` of `raja-taha/cvat`).

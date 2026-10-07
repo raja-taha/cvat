@@ -109,5 +109,8 @@ class TaskAnalyticsViewSet(viewsets.GenericViewSet):
     @action(detail=True, methods=["get"], url_path="annotation-counts")
     def annotation_counts(self, request, pk=None):
         task = self.get_object()
-        return Response(self._payload(task, request))
+        response = Response(self._payload(task, request))
+        response["Cache-Control"] = "no-store, no-cache, must-revalidate"
+        response["Pragma"] = "no-cache"
+        return response
 

@@ -4,8 +4,8 @@ Written before feature code. Ticked with evidence. A tick with no evidence is un
 
 ## Floor (items 1–4)
 
-- [x] Endpoint returns per-class counts from the database for the COCO sample task. Evidence: `GET /api/test/tasks/1/annotation-counts` as admin → `total` 1468, 77 classes, top `person` 434. SQL: `COUNT(*)` on `engine_labeledshape` for task 1, `person`, `parent_id IS NULL` = 434.
-- [x] A page in the running stack calls that endpoint. Evidence: `GET /api/test/tasks/1/analytics` (and task 4: `http://localhost:8080/api/test/tasks/4/analytics`). Jobs/Tasks **View analytics** points here after the `cvat_ui` rebuild (`cvat-ui` actions menus + redirect from `/tasks/:tid/.../analytics`).
+- [x] Endpoint returns per-class counts from the database for the COCO sample task. Evidence: `GET /api/test/tasks/8/annotation-counts` as admin → `total` 16524, 80 classes, top `person` 5017 (2000 images). Earlier 200-image task 1: `total` 1468, `person` 434.
+- [x] A page in the running stack calls that endpoint. Evidence: `GET /api/test/tasks/8/analytics` (also task 1 and 4). Jobs/Tasks **View analytics** points here after the `cvat_ui` rebuild (`cvat-ui` actions menus + redirect from `/tasks/:tid/.../analytics`).
 - [x] Counts are shown as a graph. Evidence: Chart.js bar/doughnut on that page (`docs` not a screenshot file; live URL above).
 - [x] Empty case: no matching rows shows “No annotations on this task yet.” / “No annotations match these filters.”, chart hidden. Evidence: `cvat/apps/test/templates/test/analytics.html` (`emptyEl`).
 - [x] Failed request: non-OK fetch shows “Could not load counts (status).” Evidence: same template (`showError`). Observed live as **406** when `Accept: application/json` was rejected; after adding `JSONRenderer` / CVAT Accept header, the same path returns 200.
@@ -18,11 +18,11 @@ Written before feature code. Ticked with evidence. A tick with no evidence is un
 ## Objective (item 6)
 
 - [x] MO-1 measured five times. Evidence: raw `curl` `%{time_total}` in `docs/Objectives.md`.
-- [x] Median and spread reported. Target **met**: median 68.0 ms (min 62.7, max 70.8) vs 200 ms.
+- [x] Median and spread reported. Target **met** on the 2000-image task 8: median 83.7 ms (min 76.3, max 96.7) vs 200 ms.
 
 ## Extra grouping (item 7)
 
-- [x] Split by annotation `source` (and kind). Evidence: task 1 `person` payload `by_source: {"file": 434}`, `by_kind: {"shape": 434}`. Page filters All / file / manual and Shapes / Tags / Tracks. Chose **source** because COCO import writes `file` and later draws are `manual` — a split you can check after import.
+- [x] Split by annotation `source` (and kind). Evidence: task 8 `person` payload `by_source: {"file": 5017}`, `by_kind: {"shape": 5017}`. Page filters All / file / manual and Shapes / Tags / Tracks. Chose **source** because COCO import writes `file` and later draws are `manual` — a split you can check after import.
 
 ## Live graph (items 8–9)
 
@@ -40,7 +40,7 @@ Written before feature code. Ticked with evidence. A tick with no evidence is un
 - [x] Stepwise commits (app → page → filters → Accept 406 → menus). Messages say what/why.
 - [x] Three documents under `docs/`.
 - [x] Clone SHA `d8193c584be9ce6cf9882dad06c0dd920cc0b9c5`.
-- [x] Sample image count: **200** (Objectives).
+- [x] Sample image count: **2000** on task 8 (Objectives).
 - [ ] PR against this fork only — outstanding.
 - [ ] Loom — outstanding.
 
